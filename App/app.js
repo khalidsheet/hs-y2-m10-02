@@ -3,30 +3,15 @@ import {
   WebGLRenderer,
   Scene,
   Color,
-  DirectionalLight,
-  SpotLight,
   Group,
-  SpotLightHelper,
   Clock,
+  MathUtils,
+  Vector3,
 } from "three";
 import { gsap } from "gsap";
 
-import resources from "./Resources";
-
-const CONFIG = {
-  light: {
-    ambientLightIntesity: 5,
-    background: "#f4d9ed",
-    envMapIntensity: 1,
-    spotLightIntensity: 0,
-  },
-  dark: {
-    ambientLightIntesity: 0,
-    background: 0x02040a,
-    envMapIntensity: 0.13,
-    spotLightIntensity: 400,
-  },
-};
+// import resources from "./Resources";
+import { Tile } from "./Tiles/Tile";
 
 export class App {
   constructor() {
@@ -47,10 +32,11 @@ export class App {
     // CAMERA
     const aspect = window.innerWidth / window.innerHeight;
     this._camera = new PerspectiveCamera(60, aspect, 1, 100);
-    this._camera.position.x = 3;
-    this._camera.position.y = 2.3;
-    this._camera.position.z = 8;
-    this._camera.lookAt(0, 2.2, 0);
+    this._camera.position.x = 0;
+    this._camera.position.y = 0;
+    this._camera.position.z = 10;
+    // this._camera.lookAt(0, 2.2, 0);
+    this._resize();
 
     // SCENE
     this._scene = new Scene();
@@ -67,108 +53,53 @@ export class App {
   }
 
   async _load() {
-    await resources.load();
+    // await resources.load();
 
     // INIT SCENE
     this._initScene();
 
     // INIT LIGHTS
     this._initights();
-
-    this.__initStarterAnimations();
   }
 
   _initScene() {
-    // SCENE // ENVMAP
-    this._scene.background = new Color("#000000");
+    // SCENE
+    this._scene.background = new Color(0x16201f);
 
-    // TV
-    const tv = resources.get("car");
-    this._parent.add(tv.scene);
+    this._tiles = new Tile();
+    this._tilesGroup = this._tiles.createTiles(400, 800, 10, 10);
 
-    // SCREEN
-    this._scene.add(this._parent);
+    this._tilesGroup.children.forEach((tile) => {
+      tile.position.y = MathUtils.randFloat(-100, 100);
+    });
+
+    this._scene.add(this._tilesGroup);
+  }
+
+  onDrag(e, delta) {
+    this._tilesGroup.children.forEach((tile) => {
+      tile.userData.newPosition.x += delta;
+    });
   }
 
   _initights() {
     // DIRECTIONAL
-    const dl = new DirectionalLight();
-    dl.position.set(4, 0, 5);
-    dl.lookAt(0, 0, 0);
-    dl.intensity = 0;
-    this._dl = dl;
-    this._scene.add(dl);
-    const dlh = new SpotLightHelper(dl);
-    this._scene.add(dlh);
-
-    // // SPORTLIGHT
-    const sl = new SpotLight();
-    sl.intensity = 0;
-    sl.position.set(0, 5, 5);
-    this._sl = sl;
-
-    const sl2 = new SpotLight();
-    sl2.intensity = 0;
-    sl2.position.set(2, 5, -5);
-    this._sl2 = sl2;
-    this._scene.add(sl, sl2);
-  }
-
-  changeVersion() {
-    this._version = this._version === "light" ? "dark" : "light";
-    //this._scene.background = new Color(CONFIG[this._version].background)
-
-    const config = CONFIG[this._version];
-
-    // BACKGROUND
-    const color = new Color(config.background);
-    gsap.to(this._scene.background, { r: color.r, b: color.b, g: color.g });
-
-    // ENVMAP
-    this._scene.traverse((el) => {
-      if (el.isMesh && el.material.envMapIntensity) {
-        const { material } = el;
-        gsap.to(material, { envMapIntensity: config.envMapIntensity });
-      }
-    });
-  }
-
-  __initStarterAnimations() {
-    gsap.to(this._camera.position, {
-      z: 8,
-      x: 3,
-      y: 2.3,
-      duration: 1,
-      delay: 1,
-      ease: "power2.inOut",
-    });
-
-    const toColor = new Color("#f1f1f1");
-    gsap.to(this._sl, {
-      intensity: 700,
-      duration: 2,
-      delay: 1,
-    });
-
-    gsap.to(this._sl2, {
-      intensity: 700,
-      duration: 2,
-      delay: 1.8,
-    });
-
-    gsap.to(this._dl, {
-      intensity: 10,
-      duration: 2,
-      delay: 2,
-    });
-
-    gsap.to(this._scene.background, {
-      r: toColor.r,
-      g: toColor.g,
-      b: toColor.b,
-      duration: 2,
-      delay: 4,
-    });
+    // const dl = new DirectionalLight();
+    // dl.position.set(4, 0, 5);
+    // dl.lookAt(0, 0, 0);
+    // dl.intensity = 30;
+    // this._dl = dl;
+    // this._scene.add(dl);
+    // // // SPORTLIGHT
+    // const sl = new SpotLight();
+    // sl.intensity = 700;
+    // sl.position.set(0, 5, 5);
+    // this._sl = sl;
+    // const sl2 = new SpotLight();
+    // sl2.intensity = 700;
+    // sl2.position.set(2, 5, -5);
+    // this._sl2 = sl2;
+    // this._scene.add(sl, sl2);
   }
 
   _initEvents() {
@@ -176,6 +107,11 @@ export class App {
   }
 
   _resize() {
+    let fov = Math.atan(window.innerHeight / 2 / this._camera.position.z) * 2;
+    fov = MathUtils.radToDeg(fov);
+
+    this._camera.fov = fov;
+
     this._gl.setSize(window.innerWidth, window.innerHeight);
 
     const aspect = window.innerWidth / window.innerHeight;
@@ -185,9 +121,7 @@ export class App {
 
   _animate() {
     this._clock.delta = this._clock.getDelta();
-
-    this._parent.rotation.y = this._clock.elapsedTime * -1 * 0.3;
-    this._parent.position.y = Math.sin(this._clock.elapsedTime * 0.9) * 0.1;
+    this._tiles.update();
 
     this._gl.render(this._scene, this._camera);
 
